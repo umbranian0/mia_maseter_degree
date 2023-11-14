@@ -4,21 +4,26 @@
 package functional_Programming;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 
-import functional_Programming.Empregado.EmpregadoFactory;
 
 /**
  * 
  */
 public class Main {
 	// functional interface to make Square
+	@FunctionalInterface
 	interface sqrtInterface {
 		double calculateSquareRoot(int i);
+	}
+
+	// functional interface to create EmpregadoFactory
+	@FunctionalInterface
+	interface EmpregadoFactory {
+		Empregado create();
 	}
 
 	/**
@@ -71,16 +76,14 @@ public class Main {
 		emps.add(emp1);
 		emps.add(emp2);
 		emps.add(emp3);
-		Collections.sort(emps, (e1 , e2) ->  Double.compare(e1.getSalary(), e2.getSalary()));
+		Collections.sort(emps, (e1, e2) -> Double.compare(e1.getSalary(), e2.getSalary()));
 		System.out.println("comparator" + emps.toString());
-		
 
 		// example runnable lambda instance
 		Runnable r1 = () -> System.out.println("Start running");
 		r1.run();
 
-		
-		//another example of runnable
+		// another example of runnable
 		Runnable r = new Runnable() {
 			@Override
 			public void run() {
@@ -88,7 +91,7 @@ public class Main {
 			}
 		};
 		r.run();
-		
+
 	}
 
 }

@@ -1,11 +1,7 @@
 package functional_Programming;
 
 public class Empregado {
-	//functional interface to create EmpregadoFactory
-	interface EmpregadoFactory {
-        Empregado create();
-    }
-	
+		
 	//attributes
 	private int id;
 	private String name;
