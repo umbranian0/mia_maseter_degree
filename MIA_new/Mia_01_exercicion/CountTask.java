@@ -30,11 +30,12 @@ public class CountTask implements Runnable {
 		if (num < 2) {
 			return false;
 		}
-		for (int j = 2; j < Math.sqrt(num); j++) {
+		for (int j = 2; j < num; j++) {
 			if (num % j == 0)
 				return false;
 		}
-		return true;
+		
+		return true ;
 	}
 
 	// Assessors
@@ -42,5 +43,4 @@ public class CountTask implements Runnable {
 	public int getSum() {
 		return sum;
 	}
-
 }

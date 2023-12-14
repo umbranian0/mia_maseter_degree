@@ -1,61 +1,140 @@
 package Mia_01_exercicion;
 
 public class SumPrimeTask {
-	private static final int NUM_THREADS = 4;
-	
-//	private int limit;
-//	private int segmentSize = limit / NUM_THREADS;
-//	private int start = 0;
-//	private int end = segmentSize;
-//	
-	
-	
-	
-	
-	public static void main(String[] args,int limit) {
-		// TODO Auto-generated method stub
-		
+	private int totalThreads;
+	// attributes
+	private int limit;
+	private int segmentSize;
+	private int start;
+	private int end;
+	private int totalSum;
+	private long endTime;
+	private long startTime;
 
-		Thread[] threads = new Thread[NUM_THREADS];
-		CountTask[] tasks = new CountTask[NUM_THREADS];
-		
-		int segmentSize = limit / NUM_THREADS;
-		int start = 0;
-		int end = segmentSize;
+	// constructor
+	public SumPrimeTask(int limit) {
+		this.limit = limit;
+		this.start = 2; // can start with 0, but we start with our First Prime = 2
+		this.end = segmentSize;
+		this.totalSum = 0;
+		this.calculateThreadNumberDynamic();
+		this.calcSegmentSize();
+		this.main();
+	}
+	
+	// constructor
+	public SumPrimeTask(int limit, int threads) {
+		this.limit = limit;
+		this.start = 2; // can start with 0, but we start with our First Prime = 2
+		this.end = segmentSize;
+		this.totalSum = 0;
+		this.totalThreads = threads;
+		this.calcSegmentSize();
+		this.main();
+	}
 
-		long startTime = System.currentTimeMillis();
+	private void main() {
 
-		for (int i = 0; i < NUM_THREADS; i++) {
-			if (i == NUM_THREADS - 1) {
+		Thread[] threads = new Thread[totalThreads];
+		CountTask[] tasks = new CountTask[totalThreads];
+
+		startTime = System.currentTimeMillis();
+		initializeThreads(threads, tasks);
+		joinThreads(threads, tasks);
+		endTime = System.currentTimeMillis();
+	}
+
+	private void initializeThreads(Thread[] threads, CountTask[] tasks) {
+		for (int i = 0; i < totalThreads; i++) {
+			if (i == totalThreads - 1) {
 				// Last thread takes care of remaining numbers
-				end = limit;
+				this.end = limit;
 			}
-
-			tasks[i] = new CountTask(end,start);
-			System.out.println("start:" + start + " end:" + end);
+			tasks[i] = new CountTask(end, start);
 			threads[i] = new Thread(tasks[i]);
 			threads[i].start();
 			start = end + 1;
 			end += segmentSize;
+			
 		}
+	}
 
-		long sum = 0;
-
-		for (int i = 0; i < NUM_THREADS; i++) {
+	private void joinThreads(Thread[] threads, CountTask[] tasks) {
+		for (int i = 0; i < totalThreads; i++) {
 			try {
 				threads[i].join();
-				sum += tasks[i].getSum();
-				System.out.println("sum value" + tasks[i].getSum());
+				this.totalSum += tasks[i].getSum();
+				// System.out.println("sum value" + tasks[i].getSum());
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
+	}
+	
+	private int calculateThreadNumberDynamic() {
 
-		long endTime = System.currentTimeMillis();
+		if (getLimit() >= 10000 && getLimit() <= 1000000) {
+			setNumThreads(10);					 
+		}else {
+			setNumThreads(5);
+		}
 
-		System.out.println("Sum of prime numbers up to " + limit + ": " + sum);
-		System.out.println("Time taken: " + (endTime - startTime) + " milliseconds");
+		return this.getNumThreads();
+	}
 
+	private int calcSegmentSize() {
+		setSegmentSize(getLimit() / getNumThreads());
+		
+		return getSegmentSize();
+	}
+	
+	// Assessors
+
+	public int getLimit() {
+		return limit;
+	}
+
+	public int getSegmentSize() {
+		return segmentSize;
+	}
+
+	public int getStart() {
+		return start;
+	}
+
+	public int getEnd() {
+		return end;
+	}
+
+	public int getNumThreads() {
+		return totalThreads;
+	}
+
+	// dynamic set threads
+	public void setNumThreads(int threads) {
+		this.totalThreads = threads;
+	}
+	
+	public void setSegmentSize(int segmentSize) {
+		this.segmentSize = segmentSize;
+	}
+
+	public int getTotalSum() {
+		return totalSum;
+	}
+
+	public long getEndTime() {
+		return endTime;
+	}
+
+	public long getStartTime() {
+		return startTime;
+	}
+
+	@Override
+	public String toString() {
+		return "SumPrimeTask [limit=" + limit + ", segmentSize=" + segmentSize + ", start=" + start + ", end=" + end
+				+ ", totalSum=" + totalSum + ", endTimeTimmer=" + endTime + ", startTimeTimmer=" + startTime + "]";
 	}
 
 }
