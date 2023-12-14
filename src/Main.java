@@ -2,12 +2,13 @@
 
 public class Main {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 	//	new Server(InertAddress.getLocalHost(), port:8000)
 		//chat.Main.main(args);
 		//threads_example.Main.main(args);
 		//functional_Programming.Main.main(args);
-		concurrency_sync_locks.Main.main(args);
+		//concurrency_sync_locks.Main.main(args);
+		MIA_01.Main.main(args);
 	}
 
 }
