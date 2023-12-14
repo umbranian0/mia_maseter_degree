@@ -8,7 +8,6 @@ public class Main {
 		//threads_example.Main.main(args);
 		//functional_Programming.Main.main(args);
 		//concurrency_sync_locks.Main.main(args);
-		MIA_01.Main.main(args);
 	}
 
 }

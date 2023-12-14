@@ -1,0 +1,11 @@
+  1. devolva um programa em Java que calcule a soma de
+    todos os numeros primos ate um determinado limite.
+    O Calculo deve ser frito em N threads em simultaneo
+    estando cada uma responsavel por um intervalo de valores
+    cada thread deve guardar o seu valor parcial do somatorio
+
+    2. Altere o programa anterior de forma a que cada thread
+    atualize o valor do somatorio num objeto partilhado por todas as threads
+
+    3. Utilizando o limite alto no exercicio anterior eg 1000000
+    compare a performance temporal qualdo utiliza varios processos
