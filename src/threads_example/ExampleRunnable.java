@@ -62,12 +62,6 @@ public class ExampleRunnable implements Runnable {
 
 
 
-	private String printOutput() {
-		String output = new String("Hello from a Runnable!");
-		output.concat(" \n Runnable number : " + countRuns);
-		return output;
-	}
-
 	@Override
 	public String toString() {
 		return "ExampleRunnable [status=" + status + ", isStatus()=" + isStatus() 
