@@ -10,6 +10,7 @@ public class SumPrimeTask {
 	private long totalSum;
 	private long endTime;
 	private long startTime;
+	private TotalCounter count = new TotalCounter();;
 
 	// constructor
 	public SumPrimeTask(long limit) {
@@ -37,7 +38,6 @@ public class SumPrimeTask {
 
 		Thread[] threads = new Thread[totalThreads];
 		CountTask[] tasks = new CountTask[totalThreads];
-
 		startTime = System.currentTimeMillis();
 		
 		initializeThreads(threads, tasks);
@@ -66,6 +66,8 @@ public class SumPrimeTask {
 			try {
 				threads[i].join();
 				this.totalSum += tasks[i].getSum();
+				//partilha de counter por todas as threads
+				this.count.increment( tasks[i].getSum());	
 				// System.out.println("sum value" + tasks[i].getSum());
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -76,9 +78,9 @@ public class SumPrimeTask {
 	private int calculateThreadNumberDynamic() {
 
 		if (getLimit() >= 10000 && getLimit() <= 1000000) {
-			setNumThreads(10);					 
+			setNumThreads(20);					 
 		}else {
-			setNumThreads(5);
+			setNumThreads(10);
 		}
 
 		return this.getNumThreads();
