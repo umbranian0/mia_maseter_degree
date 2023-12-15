@@ -2,11 +2,11 @@ package Mia_01_exercicion;
 
 public class CountTask implements Runnable {
 	// attributes
-	private int countStart;
-	private int countLimit;
-	private int sum;
+	private long countStart;
+	private long countLimit;
+	private long sum;
 
-	public CountTask(int countLimit, int countStart) {
+	public CountTask(long countLimit, long countStart) {
 		this.countStart = countStart;
 		this.countLimit = countLimit;
 		this.sum = 0;
@@ -15,22 +15,22 @@ public class CountTask implements Runnable {
 	// Methods
 	@Override
 	public void run() {
-		for (int i = this.countStart; i <= this.countLimit; i++) {
+		for (long i = this.countStart; i <= this.countLimit; i++) {
 			// check if prime
 			if (isPrimeNumber(i)) {
 				this.sum += i;
-				//System.out.println("is prime : " + isPrimeNumber(i) + "sum : " + getSum());
+				//System.out.prlongln("is prime : " + isPrimeNumber(i) + "sum : " + getSum());
 			}
 		}
 
 	}
 
 	// function to get if is Prime
-	public boolean isPrimeNumber(int num) {
+	public boolean isPrimeNumber(long num) {
 		if (num < 2) {
 			return false;
 		}
-		for (int j = 2; j < num; j++) {
+		for (long j = 2; j < num; j++) {
 			if (num % j == 0)
 				return false;
 		}
@@ -40,7 +40,7 @@ public class CountTask implements Runnable {
 
 	// Assessors
 
-	public int getSum() {
+	public long getSum() {
 		return sum;
 	}
 }

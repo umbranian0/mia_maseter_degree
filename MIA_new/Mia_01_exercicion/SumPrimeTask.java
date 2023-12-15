@@ -3,47 +3,49 @@ package Mia_01_exercicion;
 public class SumPrimeTask {
 	private int totalThreads;
 	// attributes
-	private int limit;
-	private int segmentSize;
-	private int start;
-	private int end;
-	private int totalSum;
+	private long limit;
+	private long segmentSize;
+	private long start;
+	private long end;
+	private long totalSum;
 	private long endTime;
 	private long startTime;
 
 	// constructor
-	public SumPrimeTask(int limit) {
+	public SumPrimeTask(long limit) {
 		this.limit = limit;
 		this.start = 2; // can start with 0, but we start with our First Prime = 2
 		this.end = segmentSize;
 		this.totalSum = 0;
 		this.calculateThreadNumberDynamic();
 		this.calcSegmentSize();
-		this.main();
+		this.run();
 	}
 	
 	// constructor
-	public SumPrimeTask(int limit, int threads) {
+	public SumPrimeTask(long limit, int threads) {
 		this.limit = limit;
 		this.start = 2; // can start with 0, but we start with our First Prime = 2
 		this.end = segmentSize;
 		this.totalSum = 0;
 		this.totalThreads = threads;
 		this.calcSegmentSize();
-		this.main();
+		this.run();
 	}
 
-	private void main() {
+	private void run() {
 
 		Thread[] threads = new Thread[totalThreads];
 		CountTask[] tasks = new CountTask[totalThreads];
 
 		startTime = System.currentTimeMillis();
+		
 		initializeThreads(threads, tasks);
 		joinThreads(threads, tasks);
+		
 		endTime = System.currentTimeMillis();
 	}
-
+	//we start the thereads individually
 	private void initializeThreads(Thread[] threads, CountTask[] tasks) {
 		for (int i = 0; i < totalThreads; i++) {
 			if (i == totalThreads - 1) {
@@ -55,10 +57,10 @@ public class SumPrimeTask {
 			threads[i].start();
 			start = end + 1;
 			end += segmentSize;
-			
 		}
 	}
-
+	//we join threads so we can wait for all threads to End to Join 
+	//join will wait for the end of the thread
 	private void joinThreads(Thread[] threads, CountTask[] tasks) {
 		for (int i = 0; i < totalThreads; i++) {
 			try {
@@ -82,7 +84,7 @@ public class SumPrimeTask {
 		return this.getNumThreads();
 	}
 
-	private int calcSegmentSize() {
+	private long calcSegmentSize() {
 		setSegmentSize(getLimit() / getNumThreads());
 		
 		return getSegmentSize();
@@ -90,19 +92,19 @@ public class SumPrimeTask {
 	
 	// Assessors
 
-	public int getLimit() {
+	public long getLimit() {
 		return limit;
 	}
 
-	public int getSegmentSize() {
+	public long getSegmentSize() {
 		return segmentSize;
 	}
 
-	public int getStart() {
+	public long getStart() {
 		return start;
 	}
 
-	public int getEnd() {
+	public long getEnd() {
 		return end;
 	}
 
@@ -115,11 +117,11 @@ public class SumPrimeTask {
 		this.totalThreads = threads;
 	}
 	
-	public void setSegmentSize(int segmentSize) {
-		this.segmentSize = segmentSize;
+	public void setSegmentSize(long l) {
+		this.segmentSize = l;
 	}
 
-	public int getTotalSum() {
+	public long getTotalSum() {
 		return totalSum;
 	}
 
