@@ -29,11 +29,13 @@ public class ExamplePC {
 					while (true) {
 						int rNumber = ThreadLocalRandom.current().nextInt(-1, 101);
 						System.out.println("id : " + id + " , P: " + rNumber);
+						
 						if (queue.offer(rNumber, 3, TimeUnit.SECONDS))
 							break;
-						// queue.put(rNumber);
+						
 						if (rNumber == -1)
 							break;
+						queue.put(rNumber);
 					}
 				} catch (InterruptedException e) {
 				}
@@ -53,7 +55,7 @@ public class ExamplePC {
 			public void run() {
 				try {
 					while (true) {
-						Integer number = queue.poll(3, TimeUnit.SECONDS);
+						Integer number = queue.poll(5, TimeUnit.SECONDS);
 						System.out.println("id : " + id + " , C: " + number);
 
 						if (number == null)
