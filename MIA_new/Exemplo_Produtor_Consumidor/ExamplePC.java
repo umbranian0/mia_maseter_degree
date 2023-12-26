@@ -11,8 +11,11 @@ public class ExamplePC {
 	private static final int N_PRODUCERS = 3;
 	private static final int N_CONSUMERS = 3;
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void main(String[] args) throws InterruptedException {
+		//startProgram();
+	}
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public static void startProgram() throws InterruptedException {
 
 		class Producer implements Runnable {
 			private BlockingQueue<Integer> queue;

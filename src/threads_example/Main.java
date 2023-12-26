@@ -16,11 +16,11 @@ public class Main {
 		// TODO Auto-generated method stub
 		System.out.println("im in main to threads_example pakcage");
 
-		ExampleRunnable exampleRunnable = new ExampleRunnable(false);
-		ExampleThread exampleThread = new ExampleThread(false);
+		//ExampleRunnable exampleRunnable = new ExampleRunnable(false);
+		//ExampleThread exampleThread = new ExampleThread(false);
 		// first lets define and stage a Thread
-		exampleRunnable.main(args);
-		exampleThread.main(args);
+		//exampleRunnable.main(args);
+		//exampleThread.main(args);
 		//(new ExampleThread()).start();
 		//(new Thread(new ExampleRunnable())).start();
 

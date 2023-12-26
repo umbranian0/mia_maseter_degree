@@ -11,7 +11,7 @@ public class Main {
 		int inputUser;
 		//requirmen
 		//ask a limit
-		System.out.println("Define a Limit to calcule sum of prime numbers:");
+		System.out.println("Press X to Stop program");
 		try (Scanner s = new Scanner(System.in)) {
 			inputUser = s.nextInt();
 			System.out.println("Select Value:"+ inputUser);
