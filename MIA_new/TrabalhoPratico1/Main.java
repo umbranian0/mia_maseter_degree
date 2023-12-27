@@ -61,7 +61,7 @@ public class Main {
 	// ARRAY TO store all my executors and will be checked by a deamon thread //
 	public static CopyOnWriteArrayList<ExecutorService> executorsArrayList = new CopyOnWriteArrayList<>();
 	public static CopyOnWriteArrayList<Thread> threadArrayList = new CopyOnWriteArrayList<>();
-	public static MonitoringThread monitoringThread;
+	public static ExecutorService monitorExecutor = Executors.newSingleThreadExecutor();
 	// Cached thread pools, 1 for each, producers and consumers
 	public static ExecutorService producerExecutor;
 	public static ExecutorService consumerExecutor;
@@ -75,7 +75,7 @@ public class Main {
 			if (executorsArrayList.isEmpty())
 				startThreadPools();
 			// use case 2 - Instance Producer / Consumer Threads that are down
-			if (monitoringThread != null) {
+			if (!monitorExecutor.isShutdown()) {
 				monitoringDeamonThread();
 			}
 		}
@@ -87,9 +87,19 @@ public class Main {
 	 * Threads by new ones
 	 */
 	public static void monitoringDeamonThread() {
-		monitoringThread = new MonitoringThread(executorsArrayList, GUI);
-		monitoringThread.setDaemon(true);
-		monitoringThread.run();
+		MonitoringThread myThread = new MonitoringThread(producerExecutor, consumerExecutor);
+		myThread.setDaemon(true);
+		myThread.start();
+		Thread.yield();
+		System.out.println("Hello from monitoring thread");
+		try {
+			myThread.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		//monitorExecutor.execute();
+		threadArrayList.add(myThread);
 	}
 
 	/*
@@ -97,52 +107,22 @@ public class Main {
 	 * executors and services removing all the executors from the array This is the
 	 * safety method that closes the program
 	 */
+
 	public static void stopProgram() {
 		// terminate Daemon Thread
-		if (!threadArrayList.isEmpty()) {
-			for (int i = 0; i < threadArrayList.size(); i++) {
-				if (threadArrayList.get(i).isAlive()) {
-					try {
-						threadArrayList.get(i).join();
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					threadArrayList.get(i).interrupt();
-				}
-
+		isRunning=false;
+		for(int i= 0; i<threadArrayList.size() ; i++) {
+			try {
+				threadArrayList.get(i).join();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
-
-		if (monitoringThread != null && monitoringThread.deamonThreadIsAlive()) {
-			monitoringThread.terminateThread();
-		}
-
-		// terminate program
-		isRunning = false;
-		// stop thread pools
-		if (!executorsArrayList.isEmpty()) {
-			for (ExecutorService executorService : executorsArrayList) {
-				executorService.shutdown();
-				try {
-					if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS))
-						executorService.shutdown();
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					executorService.shutdown();
-					Thread.currentThread().interrupt();
-					e.printStackTrace();
-				}
-				executorsArrayList.remove(executorService);
-
-				System.out.println(
-						"removing " + executorService.toString() + " terminated? " + executorService.isShutdown());
-			}
-			System.out.println("conusmer" + consumerExecutor.toString());
-			System.out.println("producer" + producerExecutor.toString());
-		}
-
-		System.out.println("stop program");
+		producerExecutor.shutdown();
+		consumerExecutor.shutdown();
+		monitorExecutor.shutdown();
+		
 	}
 
 	/*
@@ -166,48 +146,74 @@ public class Main {
 		while (isRunning) {
 			// instance Consumers in Consumer Thread Pool
 			// dynamic based on global variable
-			if (isRunning)
-				for (int i = 1; i <= NUMBER_CONSUMERS; i++) {
-					Thread c = new Thread(new Consumer(i, queue, isRunning, GUI));
-					producerExecutor.execute(c);
-					threadArrayList.add(c);
-				}
+
+			for (int i = 1; i <= NUMBER_CONSUMERS; i++) {
+				Thread c = new Thread(new Consumer(i, queue, isRunning, GUI));
+
+				producerExecutor.execute(c);
+				threadArrayList.add(c);
+
+			}
 			// instance 3 producers
 			// dynamic based on global variable
 			for (int j = 1; j <= NUMBER_PRODUCERS; j++) {
-				// dynamic solution
-				// producerExecutor.execute(new Producer(j, queue, isRunning,
-				// GUI,TYPE_PRODUCERS[j].toString()));
 
 				// case solution
 				// create executors process for each type of output
-				if (isRunning)
-					switch (j) {
-					case 1: {
-						Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "CPU"));
-						producerExecutor.execute(p);
-						threadArrayList.add(p);
-						break;
-					}
-					case 2: {
-						Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "RAM"));
-						producerExecutor.execute(p);
-						threadArrayList.add(p);
-						break;
-					}
-					case 3: {
-						Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "DISK_SPACE"));
-						producerExecutor.execute(p);
-						threadArrayList.add(p);
-						break;
-					}
-					default:
-						throw new IllegalArgumentException("Unexpected value: " + j);
-					}
+
+				switch (j) {
+				case 1: {
+					Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "CPU"));
+					producerExecutor.execute(p);
+					threadArrayList.add(p);
+					break;
+				}
+				case 2: {
+					Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "RAM"));
+					producerExecutor.execute(p);
+					threadArrayList.add(p);
+					break;
+				}
+				case 3: {
+					Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "DISK_SPACE"));
+					producerExecutor.execute(p);
+					threadArrayList.add(p);
+					break;
+				}
+				default:
+					throw new IllegalArgumentException("Unexpected value: " + j);
+				}
 
 			}
 		}
 
 	}
-
+	//old stop program???
+	/*
+	 * if (!threadArrayList.isEmpty()) { for (int i = 0; i < threadArrayList.size();
+	 * i++) { if (threadArrayList.get(i).isAlive()) { try {
+	 * threadArrayList.get(i).join();
+	 * 
+	 * } catch (InterruptedException e) { // TODO Auto-generated catch block
+	 * e.printStackTrace(); } threadArrayList.get(i).interrupt(); }
+	 * 
+	 * } }
+	 * 
+	 * if (monitoringThread != null && monitoringThread.deamonThreadIsAlive()) {
+	 * monitoringThread.terminateThread(); } // stop thread pools if
+	 * (!executorsArrayList.isEmpty()) { for (ExecutorService executorService :
+	 * executorsArrayList) { executorService.shutdown(); try { if
+	 * (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS))
+	 * executorService.shutdown(); } catch (InterruptedException e) { // TODO
+	 * Auto-generated catch block executorService.shutdown();
+	 * Thread.currentThread().interrupt(); e.printStackTrace(); }
+	 * executorsArrayList.remove(executorService);
+	 * 
+	 * System.out.println( "removing " + executorService.toString() +
+	 * " terminated? " + executorService.isShutdown()); }
+	 * System.out.println("conusmer" + consumerExecutor.toString());
+	 * System.out.println("producer" + producerExecutor.toString()); }
+	 * 
+	 * // terminate program isRunning = false; System.out.println("stop program");
+	 */
 }

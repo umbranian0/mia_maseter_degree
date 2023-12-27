@@ -140,8 +140,12 @@ public class Producer implements Runnable {
 	@Override
 	public void run() {
 		try {
+			if(!isStartProducer()) {
+				gui.addAlert("Closing program");
+				setStart(false);
+				interruptThread();
+			}
 			while (isStartProducer()) {
-				if (isStartProducer()) {
 					// each 100 miliseconds
 					Thread.sleep(RUNNING_TIME_MS);
 					// version 1 object
@@ -149,14 +153,6 @@ public class Producer implements Runnable {
 					OutputSpec_v2 out= new OutputSpec_v2(getValue(getType()), getType());
 					queue.put(out);
 					//System.out.println("Producer  id: " + this.getId() + " , out: " + out.toString());
-
-					
-				} else {
-					gui.addAlert("Closing program");
-					setStart(false);
-					interruptThread();
-				}
-
 			}
 		} catch (InterruptedException e) {
 			System.out.println("error: " + e.toString());

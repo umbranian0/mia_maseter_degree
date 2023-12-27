@@ -1,65 +1,46 @@
 package TrabalhoPratico1;
 
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 
-public class MonitoringThread implements Runnable {
-	private CopyOnWriteArrayList<ExecutorService> executorsArrayList;
-	// timmer to run, in seconds
-	private int timmer = 10;
-	private ResourceMonitorGUI gui;
+class MonitoringThread extends Thread {
+    private final ExecutorService producerExecutor;
+    private final ExecutorService consumerExecutor;
+    private final Map<Runnable, Long> lastExecutionTimes = new ConcurrentHashMap<>();
+    public MonitoringThread(ExecutorService producerExecutor, ExecutorService consumerExecutor) {
+        this.producerExecutor = producerExecutor;
+        this.consumerExecutor = consumerExecutor;
+    }
 
-	// constructors
-	public MonitoringThread(CopyOnWriteArrayList<ExecutorService> executorsArrayList, ResourceMonitorGUI gui) {
-		this.executorsArrayList = executorsArrayList;
-		this.gui = gui;
-	}
+    
+    public void run() {
+        while (true) {
+            // Verifica se algum produtor ou consumidor está inativo e reinicia
+            checkAndRestartThreads(producerExecutor, 1);
+            checkAndRestartThreads(consumerExecutor, 3);
 
-	// assessors
-	public CopyOnWriteArrayList<ExecutorService> getExecutorsArrayList() {
-		return executorsArrayList;
-	}
+            try {
+                Thread.sleep(1000); // Verifica a cada 1 segundo
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
-	public void setExecutorsArrayList(CopyOnWriteArrayList<ExecutorService> executorsArrayList) {
-		this.executorsArrayList = executorsArrayList;
-	}
+    private void checkAndRestartThreads(ExecutorService executorService, int secondsThreshold) {
+        for (Runnable task : ((ThreadPoolExecutor) executorService).getQueue()) {
+            long lastExecutionTime = lastExecutionTimes.getOrDefault(task, 0L);;
+            long currentTime = System.currentTimeMillis();
 
-	@Override
-	public void run() {
-		// TODO Auto-generated method stub
-		while (true) {
-			for (int i = 1; i <= executorsArrayList.size(); i++) {
-
-				if (getExecutorsArrayList().get(i).isShutdown()) {
-					Object o = getExecutorsArrayList().clone();
-					executorsArrayList.get(i).execute((Runnable) getExecutorsArrayList().clone());
-					gui.addAlert("replace with new consumer " + o.toString());
-				}
-			}
-			try {
-				// Aguarda 1 segundo antes de verificar novamente
-				Thread.sleep(timmer * 1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-
-	}
-
-	// get Deamon status
-	public boolean deamonThreadIsAlive() {
-		return Thread.currentThread().isAlive();
-	}
-
-	public void terminateThread() {
-		Thread.currentThread().interrupt();
-	}
-
-	// attributes for my deamon thread
-	public void setDaemon(boolean b) {
-		// TODO Auto-generated method stub
-		Thread.currentThread().setDaemon(b);
-		Thread.currentThread().start();
-	}
+            if (lastExecutionTime != 0 && currentTime - lastExecutionTime > secondsThreshold * 1000) {
+                // A tarefa está inativa há mais de secondsThreshold segundos
+                // Reinicia a tarefa (substitui por uma nova)
+                executorService.execute(task);
+                System.out.println("executin new task - " + task.toString());
+            }
+        }
+    }
 
 }
