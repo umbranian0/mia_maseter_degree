@@ -4,26 +4,32 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.swing.Spring;
+
 public class Producer implements Runnable {
 	// each 100 miliseconds
-	public static final int RUNNING_TIME_MS = 100000;
+	public static final int RUNNING_TIME_MS = 100;
 
-	private BlockingQueue<OutputSpec> queue;
+	private static final String[][] TYPE_PRODUCERS = {{"CPU"}, {"RAM"}, {"DISK_SPACE"}};
+	
+	private BlockingQueue<OutputSpec_v2> queue;
 	private int id;
+	private String type;
 	private boolean started;
 	private ResourceMonitorGUI gui;
 
-	public Producer(int id, BlockingQueue<OutputSpec> queue, boolean start) {
+	public Producer(int id, BlockingQueue<OutputSpec_v2> queue, boolean start) {
 		this.queue = queue;
 		this.id = id;
 		this.started = start;
 	}
 
-	public Producer(int id, BlockingQueue<OutputSpec> queue, boolean start, ResourceMonitorGUI gui) {
+	public Producer(int id, BlockingQueue<OutputSpec_v2> queue, boolean start, ResourceMonitorGUI gui, String type) {
 		this.queue = queue;
 		this.id = id;
 		this.started = start;
 		this.gui = gui;
+		this.type = type;
 	}
 
 	public ResourceMonitorGUI getGui() {
@@ -34,7 +40,7 @@ public class Producer implements Runnable {
 		this.gui = gui;
 	}
 
-	public BlockingQueue<OutputSpec> getQueue() {
+	public BlockingQueue<OutputSpec_v2> getQueue() {
 		return queue;
 	}
 
@@ -49,9 +55,18 @@ public class Producer implements Runnable {
 	public void setStart(boolean start) {
 		this.started = start;
 	}
+	
 
+	public String getType() {
+		return type;
+	}
 
-
+	public void setType(String type) {
+		this.type = type;
+	}
+	public void interruptThread() {
+		Thread.currentThread().interrupt();
+	}
 	private synchronized double getRam() {
 		double ram = 0;
 		if (ram != 0) {
@@ -60,7 +75,7 @@ public class Producer implements Runnable {
 		try {
 			ram = ResourceMonitorUtils.getFreeRAM();
 		} catch (Exception e) {
-			System.out.println("error : " + e.getMessage() + "\n , cause: e.getCause()" + e.getCause());
+			//System.out.println("error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
 			if (e.getMessage() == "Invalid free RAM percentage.") {
 				ram = getRam();
 			}
@@ -77,7 +92,7 @@ public class Producer implements Runnable {
 		try {
 			cpu = ResourceMonitorUtils.getCpuLoad();
 		} catch (Exception e) {
-			System.out.println("error : " + e.getMessage() + "\n , cause: e.getCause()" + e.getCause());
+			//System.out.println("error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
 			if (e.getMessage() == "Invalid free RAM percentage.") {
 				cpu = getCpu();
 			}
@@ -93,7 +108,7 @@ public class Producer implements Runnable {
 		try {
 			freeDiskSpace = ResourceMonitorUtils.getFreeDiskSpace();
 		} catch (Exception e) {
-			System.out.println("error : " + e.getMessage() + "\n , cause: e.getCause()" + e.getCause());
+			//System.out.println("error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
 
 			if (e.getMessage() == "Invalid free RAM percentage.") {
 				freeDiskSpace = getFreeDisk();
@@ -101,22 +116,45 @@ public class Producer implements Runnable {
 		}
 		return freeDiskSpace;
 	}
+	private double getValue(String type) {
+		
+		switch (type) {
+		case "CPU": {
+			return getCpu();
 
-
+		}
+		case "RAM": {
+			return getRam();
+		
+		}
+		case "DISK_SPACE": {
+			return getFreeDisk();
+			
+		}
+		default:
+			throw new IllegalArgumentException("Unexpected value: " + type);
+		}
+		
+	}
+	
 	@Override
 	public void run() {
 		try {
-			while (this.isStartProducer()) {
+			while (isStartProducer()) {
 				if (isStartProducer()) {
-					OutputSpec out = new OutputSpec(getCpu(), getRam(), getFreeDisk());
+					// each 100 miliseconds
+					Thread.sleep(RUNNING_TIME_MS);
+					// version 1 object
+					// OutputSpec out = new OutputSpec(getCpu(), getRam(), getFreeDisk());
+					OutputSpec_v2 out= new OutputSpec_v2(getValue(getType()), getType());
 					queue.put(out);
 					System.out.println("Producer  id: " + this.getId() + " , out: " + out.toString());
 
-					// each 100 miliseconds
-					Thread.sleep(RUNNING_TIME_MS);
+					
 				} else {
 					gui.addAlert("Closing program");
 					setStart(false);
+					interruptThread();
 				}
 
 			}
@@ -124,6 +162,8 @@ public class Producer implements Runnable {
 			System.out.println("error: " + e.toString());
 		}
 	}
+
+
 
 	@Override
 	public String toString() {

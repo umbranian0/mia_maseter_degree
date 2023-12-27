@@ -7,10 +7,10 @@ public class tests_class {
 	// test to Producer Class
 		public static void test_Consumer() {
 
-			BlockingQueue<OutputSpec> queue = new ArrayBlockingQueue<OutputSpec>(5);
-			queue.add(new OutputSpec(0.5, 0.2, 0.6));
-			queue.add(new OutputSpec(0.4, 0.2, 0.1));
-			queue.add(new OutputSpec(0.6, 0.4, 0.5));
+			BlockingQueue<OutputSpec_v2> queue = new ArrayBlockingQueue<OutputSpec_v2>(5);
+			queue.add(new OutputSpec_v2(0.5,"RAM"));
+			queue.add(new OutputSpec_v2(0.4, "CPU"));
+			queue.add(new OutputSpec_v2(0.6, "DISK_SPACE"));
 			Consumer consumer = new Consumer(1, queue, true);
 
 			System.out.println("consumer:  " + consumer.toString());
@@ -19,10 +19,10 @@ public class tests_class {
 		// test to Producer Class
 		public static void test_Producer() {
 
-			BlockingQueue<OutputSpec> queue = new ArrayBlockingQueue<OutputSpec>(5);
-			queue.add(new OutputSpec(0.5, 0.2, 0.6));
-			queue.add(new OutputSpec(0.4, 0.2, 0.1));
-			queue.add(new OutputSpec(0.6, 0.4, 0.5));
+			BlockingQueue<OutputSpec_v2> queue = new ArrayBlockingQueue<OutputSpec_v2>(5);
+			queue.add(new OutputSpec_v2(0.5,"RAM"));
+			queue.add(new OutputSpec_v2(0.4, "CPU"));
+			queue.add(new OutputSpec_v2(0.6, "DISK_SPACE"));
 			Producer producer = new Producer(1, queue, true);
 
 			System.out.println("producer:  " + producer.toString());

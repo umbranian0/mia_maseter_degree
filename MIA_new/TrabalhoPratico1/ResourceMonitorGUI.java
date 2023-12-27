@@ -17,18 +17,6 @@ public class ResourceMonitorGUI {
 		Panel pnl = new Panel();
 		pnl.setBounds(0, 0, 500, 50);
 		windowFrame.add(pnl);
-		
-		JButton buttonStart = new JButton("Start program");
-		buttonStart.setSize(500, 100);
-		pnl.add(buttonStart);
-
-		buttonStart.addActionListener((ActionListener) new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				addAlert("starting program");
-				Main.main(null);
-			}
-		});
 
 		JButton buttonStop = new JButton("Stop program");
 		buttonStop.setSize(500, 100);
@@ -37,7 +25,10 @@ public class ResourceMonitorGUI {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				addAlert("stopping program");
+				
 				Main.stopProgram();
+				
+				System.exit(0);
 				
 			}
 		});
