@@ -86,7 +86,7 @@ public class Consumer implements Runnable {
 				//Thread.sleep(RUNNING_TIME_MS);
 				OutputSpec_v2 obj = queue.poll(TIMEOUT_SEC, TimeUnit.SECONDS);
 				if (obj != null) {
-					System.out.println("Consumer  id : " + id + " , consumed object: " + obj.toString());
+					//System.out.println("Consumer  id : " + id + " , consumed object: " + obj.toString());
 					alertFlow(obj);
 				}
 

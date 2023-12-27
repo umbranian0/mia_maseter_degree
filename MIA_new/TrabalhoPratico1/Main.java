@@ -33,7 +33,8 @@ public class Main {
 	 * 
 	 * TODO 2.2 - Verify if any ThreadConsumer.isDown 2.2.1- If ThreadConsumer don't
 	 * consume values for 30 or more seconds TODO 2.3 - Case Producer or Consumer
-	 * down 2.3.1 - Instance new Thread to replace the down Thread TODO
+	 * down 2.3.1 - Instance new Thread to replace the down Thread
+	 * 
 	 * 
 	 * 3 - The system should be configured to end the system safely There must be a
 	 * button or a string command line to stop the program all threads must be
@@ -59,18 +60,22 @@ public class Main {
 	// checking for any down thread
 	// ARRAY TO store all my executors and will be checked by a deamon thread //
 	public static CopyOnWriteArrayList<ExecutorService> executorsArrayList = new CopyOnWriteArrayList<>();
+	public static CopyOnWriteArrayList<Thread> threadArrayList = new CopyOnWriteArrayList<>();
 	public static MonitoringThread monitoringThread;
 	// Cached thread pools, 1 for each, producers and consumers
 	public static ExecutorService producerExecutor;
 	public static ExecutorService consumerExecutor;
 
 	public static void main(String[] args) throws InterruptedException {
-		GUI.addAlert("Starting Program by default"+isRunning);
-		
+		GUI.addAlert("Starting Program by default" + isRunning);
+		if (!isRunning) {
+			stopProgram();
+		}
 		if (isRunning) {
-			startThreadPools();
+			if (executorsArrayList.isEmpty())
+				startThreadPools();
 			// use case 2 - Instance Producer / Consumer Threads that are down
-			if (monitoringThread != null ) {
+			if (monitoringThread != null) {
 				monitoringDeamonThread();
 			}
 		}
@@ -94,9 +99,25 @@ public class Main {
 	 */
 	public static void stopProgram() {
 		// terminate Daemon Thread
+		if (!threadArrayList.isEmpty()) {
+			for (int i = 0; i < threadArrayList.size(); i++) {
+				if (threadArrayList.get(i).isAlive()) {
+					try {
+						threadArrayList.get(i).join();
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					threadArrayList.get(i).interrupt();
+				}
+
+			}
+		}
+
 		if (monitoringThread != null && monitoringThread.deamonThreadIsAlive()) {
 			monitoringThread.terminateThread();
 		}
+
 		// terminate program
 		isRunning = false;
 		// stop thread pools
@@ -145,11 +166,12 @@ public class Main {
 		while (isRunning) {
 			// instance Consumers in Consumer Thread Pool
 			// dynamic based on global variable
-
-			for (int i = 1; i <= NUMBER_CONSUMERS; i++) {
-				consumerExecutor.execute(new Consumer(i, queue, isRunning, GUI));
-				
-			}
+			if (isRunning)
+				for (int i = 1; i <= NUMBER_CONSUMERS; i++) {
+					Thread c = new Thread(new Consumer(i, queue, isRunning, GUI));
+					producerExecutor.execute(c);
+					threadArrayList.add(c);
+				}
 			// instance 3 producers
 			// dynamic based on global variable
 			for (int j = 1; j <= NUMBER_PRODUCERS; j++) {
@@ -159,25 +181,29 @@ public class Main {
 
 				// case solution
 				// create executors process for each type of output
-				if(isRunning)
-				switch (j) {
-				case 1: {
-					producerExecutor.execute(new Producer(j, queue, isRunning, GUI, "CPU"));
-					break;
-				}
-				case 2: {
-					producerExecutor.execute(new Producer(j, queue, isRunning, GUI, "RAM"));
-
-					break;
-				}
-				case 3: {
-					producerExecutor.execute(new Producer(j, queue, isRunning, GUI, "DISK_SPACE"));
-
-					break;
-				}
-				default:
-					throw new IllegalArgumentException("Unexpected value: " + j);
-				}
+				if (isRunning)
+					switch (j) {
+					case 1: {
+						Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "CPU"));
+						producerExecutor.execute(p);
+						threadArrayList.add(p);
+						break;
+					}
+					case 2: {
+						Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "RAM"));
+						producerExecutor.execute(p);
+						threadArrayList.add(p);
+						break;
+					}
+					case 3: {
+						Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "DISK_SPACE"));
+						producerExecutor.execute(p);
+						threadArrayList.add(p);
+						break;
+					}
+					default:
+						throw new IllegalArgumentException("Unexpected value: " + j);
+					}
 
 			}
 		}

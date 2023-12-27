@@ -148,7 +148,7 @@ public class Producer implements Runnable {
 					// OutputSpec out = new OutputSpec(getCpu(), getRam(), getFreeDisk());
 					OutputSpec_v2 out= new OutputSpec_v2(getValue(getType()), getType());
 					queue.put(out);
-					System.out.println("Producer  id: " + this.getId() + " , out: " + out.toString());
+					//System.out.println("Producer  id: " + this.getId() + " , out: " + out.toString());
 
 					
 				} else {
