@@ -10,8 +10,8 @@ public class Producer implements Runnable {
 	// each 100 miliseconds
 	public static final int RUNNING_TIME_MS = 100;
 
-	private static final String[][] TYPE_PRODUCERS = {{"CPU"}, {"RAM"}, {"DISK_SPACE"}};
-	
+	private static final String[][] TYPE_PRODUCERS = { { "CPU" }, { "RAM" }, { "DISK_SPACE" } };
+
 	private BlockingQueue<OutputSpec_v2> queue;
 	private int id;
 	private String type;
@@ -55,7 +55,6 @@ public class Producer implements Runnable {
 	public void setStart(boolean start) {
 		this.started = start;
 	}
-	
 
 	public String getType() {
 		return type;
@@ -64,60 +63,63 @@ public class Producer implements Runnable {
 	public void setType(String type) {
 		this.type = type;
 	}
+
 	public void interruptThread() {
 		Thread.currentThread().interrupt();
 	}
+
 	private synchronized double getRam() {
 		double ram = 0;
-		if (ram != 0) {
-			return ram;
-		}
+
 		try {
 			ram = ResourceMonitorUtils.getFreeRAM();
 		} catch (Exception e) {
-			//System.out.println("error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
-			if (e.getMessage() == "Invalid free RAM percentage.") {
-				ram = getRam();
-			}
+
+			gui.addAlert("Stopping Producer error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
+//			if (e.getMessage() == "Invalid free RAM percentage.") {
+//				gui.addAlert("Producer : "+e.getMessage() +"  .Trying again..");
+//				ram = getRam();
+//			}
 		}
+
 		return ram;
 	}
 
 	private synchronized double getCpu() {
 		double cpu = 0;
 
-		if (cpu != 0) {
-			return cpu;
-		}
 		try {
 			cpu = ResourceMonitorUtils.getCpuLoad();
+
 		} catch (Exception e) {
-			//System.out.println("error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
-			if (e.getMessage() == "Invalid free RAM percentage.") {
-				cpu = getCpu();
-			}
+
+			gui.addAlert("Stopping Producer error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
+//			if (e.getMessage() == "Invalid free RAM percentage.") {
+//				gui.addAlert("Producer : "+e.getMessage() +"  .Trying again..");
+//				cpu = getCpu();
+//			}
 		}
+
 		return cpu;
 	}
 
 	private synchronized double getFreeDisk() {
 		double freeDiskSpace = 0;
-		if (freeDiskSpace != 0) {
-			return freeDiskSpace;
-		}
 		try {
 			freeDiskSpace = ResourceMonitorUtils.getFreeDiskSpace();
 		} catch (Exception e) {
-			//System.out.println("error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
-
-			if (e.getMessage() == "Invalid free RAM percentage.") {
-				freeDiskSpace = getFreeDisk();
-			}
+			gui.addAlert("Stopping Producer error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
+//			if (e.getMessage() == "Invalid free RAM percentage.") {
+//				gui.addAlert("Producer : " + e.getMessage() + "  .Trying again..");
+//				freeDiskSpace = getFreeDisk();
+//			}
 		}
+
 		return freeDiskSpace;
 	}
-	private double getValue(String type) {
-		
+
+	private synchronized double getValue(String type) {
+
 		switch (type) {
 		case "CPU": {
 			return getCpu();
@@ -125,41 +127,37 @@ public class Producer implements Runnable {
 		}
 		case "RAM": {
 			return getRam();
-		
+
 		}
 		case "DISK_SPACE": {
 			return getFreeDisk();
-			
+
 		}
 		default:
 			throw new IllegalArgumentException("Unexpected value: " + type);
 		}
-		
+
 	}
-	
+
 	@Override
 	public void run() {
 		try {
-			if(!isStartProducer()) {
+			if (!isStartProducer()) {
 				gui.addAlert("Closing program");
 				setStart(false);
 				interruptThread();
 			}
 			while (isStartProducer()) {
-					// each 100 miliseconds
-					Thread.sleep(RUNNING_TIME_MS);
-					// version 1 object
-					// OutputSpec out = new OutputSpec(getCpu(), getRam(), getFreeDisk());
-					OutputSpec_v2 out= new OutputSpec_v2(getValue(getType()), getType());
-					queue.put(out);
-					System.out.println("Producer  id: " + this.getId() + " , out: " + out.toString());
+				OutputSpec_v2 out = new OutputSpec_v2(getValue(getType()), getType());
+				queue.put(out);
+				// each 100 miliseconds
+				Thread.sleep(RUNNING_TIME_MS);
 			}
 		} catch (InterruptedException e) {
-			System.out.println("error: " + e.toString());
+			System.out.println("Producer exception: " + e.toString());
+			interruptThread();
 		}
 	}
-
-
 
 	@Override
 	public String toString() {

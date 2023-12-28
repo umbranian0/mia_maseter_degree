@@ -26,7 +26,7 @@ public class ResourceMonitorGUI {
 			public void actionPerformed(ActionEvent e) {
 				addAlert("stopping program");
 				
-				Main.stopProgram();
+				Main.stopProgram(false);
 				
 				System.exit(0);
 				

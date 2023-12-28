@@ -53,12 +53,11 @@ public class Main {
 	public static final int NUMBER_PRODUCERS = 3;
 	public static final int NUMBER_CONSUMERS = 5;
 
-	// Variable to dynamic start / stop program
-	public static boolean isRunning = true;
-
 	// Queue for the producers and consuemrs
 	public static BlockingQueue<OutputSpec_v2> queue = new ArrayBlockingQueue<OutputSpec_v2>(100);
 
+	// Daemon thread
+	public static MonitoringThread monitorinDeamonThread;
 	// checking for any down thread
 	// ARRAY TO store all my executors and will be checked by a deamon thread //
 	public static CopyOnWriteArrayList<ExecutorService> executorsArrayList = new CopyOnWriteArrayList<>();
@@ -69,16 +68,17 @@ public class Main {
 	public static ExecutorService consumerExecutor;
 
 	public static void main(String[] args) throws InterruptedException {
+		// Variable to dynamic start / stop program
+		boolean isRunning = true;
+
 		GUI.addAlert("Starting Program by default" + isRunning);
-		if (!isRunning) {
-			stopProgram();
-		}
 		if (isRunning) {
 			if (executorsArrayList.isEmpty()) {
-				startThreadPools();
-				monitoringDeamonThread();
+				startThreadPools(isRunning);
 			}
 
+		}else {
+			stopProgram(isRunning);
 		}
 
 	}
@@ -87,25 +87,23 @@ public class Main {
 	 * USE Case 2 - Monitoring threads that are stopped Replacing the stopped
 	 * Threads by new ones
 	 */
-	public static void monitoringDeamonThread() {
-		if(!monitorExecutor.isShutdown()) {
-			MonitoringThread myThread = new MonitoringThread(producerExecutor, consumerExecutor);
-			myThread.setDaemon(true);
-			try {
-			monitorExecutor.execute(myThread);
-			myThread.start();
-			Thread.yield();
-			System.out.println("Stard monitoring thread");
+	public synchronized static void monitoringDeamonThread(boolean isRunning) {
 
-			
-				myThread.join();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			threadArrayList.add(myThread);
+		monitorinDeamonThread = new MonitoringThread(producerExecutor, consumerExecutor, isRunning, threadArrayList);
+		monitorinDeamonThread.setDaemon(true);
+		try {
+			monitorExecutor.execute(monitorinDeamonThread);
+			monitorinDeamonThread.start();
+			Thread.yield();
+			System.out.println("Starting monitoring thread : " + monitorinDeamonThread.isAlive());
+			monitorinDeamonThread.join();
+
+		} catch (InterruptedException e) {
+			monitorinDeamonThread.notify();
+			e.printStackTrace();
 		}
-		
+		threadArrayList.add(monitorinDeamonThread);
+
 	}
 
 	/*
@@ -114,17 +112,29 @@ public class Main {
 	 * safety method that closes the program
 	 */
 
-	public static void stopProgram() {
+	public static void stopProgram(boolean isRunning) {
 		// terminate Daemon Thread
 		isRunning = false;
+		// close all threads
+		for (int i = 0; i < threadArrayList.size(); i++) {
 
+			try {
+				Thread.yield();
+				threadArrayList.get(i).join();
+
+			} catch (InterruptedException e) {
+				threadArrayList.get(i).notify();
+				e.printStackTrace();
+			}
+			threadArrayList.remove(i);
+		}
 		// shutdown services executors
 		for (int j = 0; j < executorsArrayList.size(); j++) {
 			if (!executorsArrayList.get(j).isShutdown()) {
 				executorsArrayList.get(j).shutdown();
 				try {
-					
-					executorsArrayList.get(j).awaitTermination(5, TimeUnit.MILLISECONDS);
+
+					executorsArrayList.get(j).awaitTermination(1, TimeUnit.SECONDS);
 					executorsArrayList.get(j).shutdownNow();
 				} catch (InterruptedException e) {
 
@@ -134,18 +144,10 @@ public class Main {
 			}
 
 		}
-		//close all threads
-		for (int i = 0; i < threadArrayList.size(); i++) {
-			try {
-				threadArrayList.get(i).join();
-				threadArrayList.get(i).interrupt();
-				threadArrayList.remove(i);
-			} catch (InterruptedException e) {
-				threadArrayList.get(i).interrupt();
-				e.printStackTrace();
-			}
-		}
-		System.out.println(executorsArrayList.toString() + threadArrayList.toString());
+
+		System.out.println(
+				"executors " + executorsArrayList.toString() + " \n thread Array" + threadArrayList.toString());
+
 	}
 
 	/*
@@ -153,22 +155,20 @@ public class Main {
 	 * creation and executros
 	 * 
 	 */
-	private synchronized static void startThreadPools() {
+	private synchronized static void startThreadPools(boolean isRunning) {
 
 		// Starting 2 thread pools, 1 for Producers , 1 for Consumers
-		if (executorsArrayList.isEmpty()) {
-			for (int x = 0; x < NUMBER_CACHED_THREAD_POOLS_PRODUCERS; x++) {
-				producerExecutor = Executors.newCachedThreadPool();
-				executorsArrayList.add(producerExecutor);
-			}
-			for (int y = 0; y < NUMBER_CACHED_THREAD_POOLS_CONSUMERS; y++) {
-				consumerExecutor = Executors.newCachedThreadPool();
-				executorsArrayList.add(consumerExecutor);
-			}
-			for (int k = 0; k < NUMBER_MONITOR_THREAD_POOLS; k++) {
-				monitorExecutor = Executors.newSingleThreadExecutor();
-				executorsArrayList.add(monitorExecutor);
-			}
+		for (int x = 0; x < NUMBER_CACHED_THREAD_POOLS_PRODUCERS; x++) {
+			producerExecutor = Executors.newCachedThreadPool();
+			executorsArrayList.add(producerExecutor);
+		}
+		for (int y = 0; y < NUMBER_CACHED_THREAD_POOLS_CONSUMERS; y++) {
+			consumerExecutor = Executors.newCachedThreadPool();
+			executorsArrayList.add(consumerExecutor);
+		}
+		for (int k = 0; k < NUMBER_MONITOR_THREAD_POOLS; k++) {
+			monitorExecutor = Executors.newSingleThreadExecutor();
+			executorsArrayList.add(monitorExecutor);
 		}
 
 		while (isRunning) {
@@ -181,8 +181,7 @@ public class Main {
 					if (!consumerExecutor.isShutdown()) {
 						consumerExecutor.execute(c);
 					}
-
-					consumerExecutor.awaitTermination(100, TimeUnit.MILLISECONDS);
+					consumerExecutor.awaitTermination(1, TimeUnit.SECONDS);
 					threadArrayList.add(c);
 				} catch (InterruptedException e) {
 					consumerExecutor.shutdownNow();
@@ -220,44 +219,21 @@ public class Main {
 					if (!producerExecutor.isShutdown()) {
 						producerExecutor.execute(p);
 						threadArrayList.add(p);
+						
 					}
-					producerExecutor.awaitTermination(10, TimeUnit.MILLISECONDS);
+					producerExecutor.awaitTermination(1, TimeUnit.SECONDS);
 				} catch (InterruptedException e) {
 					producerExecutor.shutdownNow();
 					e.printStackTrace();
 				}
 
 			}
-
+			// use case 2 - re instance threads stopped...
+			//not working...
+			if (monitorinDeamonThread == null)
+				monitoringDeamonThread(isRunning);
 		}
+	
 
 	}
-	// old stop program???
-	/*
-	 * if (!threadArrayList.isEmpty()) { for (int i = 0; i < threadArrayList.size();
-	 * i++) { if (threadArrayList.get(i).isAlive()) { try {
-	 * threadArrayList.get(i).join();
-	 * 
-	 * } catch (InterruptedException e) { // TODO Auto-generated catch block
-	 * e.printStackTrace(); } threadArrayList.get(i).interrupt(); }
-	 * 
-	 * } }
-	 * 
-	 * if (monitoringThread != null && monitoringThread.deamonThreadIsAlive()) {
-	 * monitoringThread.terminateThread(); } // stop thread pools if
-	 * (!executorsArrayList.isEmpty()) { for (ExecutorService executorService :
-	 * executorsArrayList) { executorService.shutdown(); try { if
-	 * (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS))
-	 * executorService.shutdown(); } catch (InterruptedException e) { // TODO
-	 * Auto-generated catch block executorService.shutdown();
-	 * Thread.currentThread().interrupt(); e.printStackTrace(); }
-	 * executorsArrayList.remove(executorService);
-	 * 
-	 * System.out.println( "removing " + executorService.toString() +
-	 * " terminated? " + executorService.isShutdown()); }
-	 * System.out.println("conusmer" + consumerExecutor.toString());
-	 * System.out.println("producer" + producerExecutor.toString()); }
-	 * 
-	 * // terminate program isRunning = false; System.out.println("stop program");
-	 */
 }
