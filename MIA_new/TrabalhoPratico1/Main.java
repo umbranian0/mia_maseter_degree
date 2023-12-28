@@ -46,10 +46,12 @@ public class Main {
 
 	public static final int NUMBER_CACHED_THREAD_POOLS_CONSUMERS = 1;
 	public static final int NUMBER_CACHED_THREAD_POOLS_PRODUCERS = 1;
+	public static final int NUMBER_MONITOR_THREAD_POOLS = 1;
+
 	public static final String[][] TYPE_PRODUCERS = { { "CPU" }, { "RAM" }, { "DISK_SPACE" } };
 
 	public static final int NUMBER_PRODUCERS = 3;
-	public static final int NUMBER_CONSUMERS = 10;
+	public static final int NUMBER_CONSUMERS = 5;
 
 	// Variable to dynamic start / stop program
 	public static boolean isRunning = true;
@@ -61,7 +63,7 @@ public class Main {
 	// ARRAY TO store all my executors and will be checked by a deamon thread //
 	public static CopyOnWriteArrayList<ExecutorService> executorsArrayList = new CopyOnWriteArrayList<>();
 	public static CopyOnWriteArrayList<Thread> threadArrayList = new CopyOnWriteArrayList<>();
-	public static ExecutorService monitorExecutor = Executors.newSingleThreadExecutor();
+	public static ExecutorService monitorExecutor;
 	// Cached thread pools, 1 for each, producers and consumers
 	public static ExecutorService producerExecutor;
 	public static ExecutorService consumerExecutor;
@@ -72,12 +74,11 @@ public class Main {
 			stopProgram();
 		}
 		if (isRunning) {
-			if (executorsArrayList.isEmpty())
+			if (executorsArrayList.isEmpty()) {
 				startThreadPools();
-			// use case 2 - Instance Producer / Consumer Threads that are down
-			if (!monitorExecutor.isShutdown()) {
 				monitoringDeamonThread();
 			}
+
 		}
 
 	}
@@ -87,19 +88,24 @@ public class Main {
 	 * Threads by new ones
 	 */
 	public static void monitoringDeamonThread() {
-		MonitoringThread myThread = new MonitoringThread(producerExecutor, consumerExecutor);
-		myThread.setDaemon(true);
-		myThread.start();
-		Thread.yield();
-		System.out.println("Hello from monitoring thread");
-		try {
-			myThread.join();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		if(!monitorExecutor.isShutdown()) {
+			MonitoringThread myThread = new MonitoringThread(producerExecutor, consumerExecutor);
+			myThread.setDaemon(true);
+			try {
+			monitorExecutor.execute(myThread);
+			myThread.start();
+			Thread.yield();
+			System.out.println("Stard monitoring thread");
+
+			
+				myThread.join();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			threadArrayList.add(myThread);
 		}
-		//monitorExecutor.execute();
-		threadArrayList.add(myThread);
+		
 	}
 
 	/*
@@ -110,19 +116,36 @@ public class Main {
 
 	public static void stopProgram() {
 		// terminate Daemon Thread
-		isRunning=false;
-		for(int i= 0; i<threadArrayList.size() ; i++) {
+		isRunning = false;
+
+		// shutdown services executors
+		for (int j = 0; j < executorsArrayList.size(); j++) {
+			if (!executorsArrayList.get(j).isShutdown()) {
+				executorsArrayList.get(j).shutdown();
+				try {
+					
+					executorsArrayList.get(j).awaitTermination(5, TimeUnit.MILLISECONDS);
+					executorsArrayList.get(j).shutdownNow();
+				} catch (InterruptedException e) {
+
+					executorsArrayList.get(j).shutdownNow();
+					e.printStackTrace();
+				}
+			}
+
+		}
+		//close all threads
+		for (int i = 0; i < threadArrayList.size(); i++) {
 			try {
 				threadArrayList.get(i).join();
+				threadArrayList.get(i).interrupt();
+				threadArrayList.remove(i);
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
+				threadArrayList.get(i).interrupt();
 				e.printStackTrace();
 			}
 		}
-		producerExecutor.shutdown();
-		consumerExecutor.shutdown();
-		monitorExecutor.shutdown();
-		
+		System.out.println(executorsArrayList.toString() + threadArrayList.toString());
 	}
 
 	/*
@@ -131,27 +154,40 @@ public class Main {
 	 * 
 	 */
 	private synchronized static void startThreadPools() {
+
 		// Starting 2 thread pools, 1 for Producers , 1 for Consumers
 		if (executorsArrayList.isEmpty()) {
 			for (int x = 0; x < NUMBER_CACHED_THREAD_POOLS_PRODUCERS; x++) {
 				producerExecutor = Executors.newCachedThreadPool();
 				executorsArrayList.add(producerExecutor);
 			}
-			for (int x = 0; x < NUMBER_CACHED_THREAD_POOLS_CONSUMERS; x++) {
+			for (int y = 0; y < NUMBER_CACHED_THREAD_POOLS_CONSUMERS; y++) {
 				consumerExecutor = Executors.newCachedThreadPool();
 				executorsArrayList.add(consumerExecutor);
+			}
+			for (int k = 0; k < NUMBER_MONITOR_THREAD_POOLS; k++) {
+				monitorExecutor = Executors.newSingleThreadExecutor();
+				executorsArrayList.add(monitorExecutor);
 			}
 		}
 
 		while (isRunning) {
-			// instance Consumers in Consumer Thread Pool
-			// dynamic based on global variable
 
+			// instance Consumers in Consumer Thread Pool
 			for (int i = 1; i <= NUMBER_CONSUMERS; i++) {
 				Thread c = new Thread(new Consumer(i, queue, isRunning, GUI));
+				try {
+					// execute task
+					if (!consumerExecutor.isShutdown()) {
+						consumerExecutor.execute(c);
+					}
 
-				producerExecutor.execute(c);
-				threadArrayList.add(c);
+					consumerExecutor.awaitTermination(100, TimeUnit.MILLISECONDS);
+					threadArrayList.add(c);
+				} catch (InterruptedException e) {
+					consumerExecutor.shutdownNow();
+					e.printStackTrace();
+				}
 
 			}
 			// instance 3 producers
@@ -160,35 +196,43 @@ public class Main {
 
 				// case solution
 				// create executors process for each type of output
-
+				Thread p;
 				switch (j) {
 				case 1: {
-					Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "CPU"));
-					producerExecutor.execute(p);
-					threadArrayList.add(p);
+					p = new Thread(new Producer(j, queue, isRunning, GUI, "CPU"));
 					break;
 				}
 				case 2: {
-					Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "RAM"));
-					producerExecutor.execute(p);
-					threadArrayList.add(p);
+					p = new Thread(new Producer(j, queue, isRunning, GUI, "RAM"));
 					break;
 				}
 				case 3: {
-					Thread p = new Thread(new Producer(j, queue, isRunning, GUI, "DISK_SPACE"));
-					producerExecutor.execute(p);
-					threadArrayList.add(p);
+					p = new Thread(new Producer(j, queue, isRunning, GUI, "DISK_SPACE"));
+					;
 					break;
 				}
 				default:
 					throw new IllegalArgumentException("Unexpected value: " + j);
 				}
 
+				try {
+					// execute task
+					if (!producerExecutor.isShutdown()) {
+						producerExecutor.execute(p);
+						threadArrayList.add(p);
+					}
+					producerExecutor.awaitTermination(10, TimeUnit.MILLISECONDS);
+				} catch (InterruptedException e) {
+					producerExecutor.shutdownNow();
+					e.printStackTrace();
+				}
+
 			}
+
 		}
 
 	}
-	//old stop program???
+	// old stop program???
 	/*
 	 * if (!threadArrayList.isEmpty()) { for (int i = 0; i < threadArrayList.size();
 	 * i++) { if (threadArrayList.get(i).isAlive()) { try {

@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit;
 
 public class Consumer implements Runnable {
 	public static final int TIMEOUT_SEC = 5;
-	public static final int RUNNING_TIME_MS = 10000;
+	public static final int RUNNING_TIME_MS = 1000;
 	//alarms
 	public static final double CPU_ALARM_PERCENTAGE = 0.8;
 	public static final double RAM_ALARM_PERCENTAGE = 0.9;
@@ -81,15 +81,15 @@ public class Consumer implements Runnable {
 	@Override
 	public void run() {
 		try {
-			while (!queue.isEmpty()) {
-
+			while (isStarted()) {
+				
 				//Thread.sleep(RUNNING_TIME_MS);
 				OutputSpec_v2 obj = queue.poll(TIMEOUT_SEC, TimeUnit.SECONDS);
 				if (obj != null) {
-					//System.out.println("Consumer  id : " + id + " , consumed object: " + obj.toString());
+					System.out.println("Consumer  id : " + id + " , consumed object: " + obj.toString());
 					alertFlow(obj);
 				}
-
+				//Thread.sleep(RUNNING_TIME_MS);
 			}
 		} catch (InterruptedException e) {
 		}
