@@ -154,7 +154,7 @@ public class Producer implements Runnable {
 				Thread.sleep(RUNNING_TIME_MS);
 			}
 		} catch (InterruptedException e) {
-			System.out.println("Producer exception: " + e.toString());
+			//System.out.println("Producer exception: " + e.toString());
 			interruptThread();
 		}
 	}

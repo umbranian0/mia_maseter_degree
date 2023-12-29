@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 
@@ -25,14 +26,15 @@ public class Main {
 	 * 10% 1.2.1.4- Alarm - Storage less < than 20% 1.3- Case Alarm == true 1.3.1
 	 * Alert to GUI Interface about the Alarm
 	 * 
-	 * TODO 2 - Fault Tolerance daemon Thread Verify every 1 second -->
+	 *  2 - Fault Tolerance daemon Thread Verify every 1 second -->
 	 * ThreadProducer.isDown ? ThreadConsumer.isDown ?
 	 *
-	 * TODO 2.1 - Verify if any ThreadProducer.isDown 2.1.1- If ThreadProducer don't
+	 *  2.1 - Verify if any ThreadProducer.isDown 2.1.1- If ThreadProducer don't
 	 * produce values for 10 or more seconds
 	 * 
-	 * TODO 2.2 - Verify if any ThreadConsumer.isDown 2.2.1- If ThreadConsumer don't
-	 * consume values for 30 or more seconds TODO 2.3 - Case Producer or Consumer
+	 *  2.2 - Verify if any ThreadConsumer.isDown 2.2.1- If ThreadConsumer don't
+	 * consume values for 30 or more seconds 
+	 *  2.3 - Case Producer or Consumer
 	 * down 2.3.1 - Instance new Thread to replace the down Thread
 	 * 
 	 * 
@@ -47,7 +49,9 @@ public class Main {
 	public static final int NUMBER_CACHED_THREAD_POOLS_CONSUMERS = 1;
 	public static final int NUMBER_CACHED_THREAD_POOLS_PRODUCERS = 1;
 	public static final int NUMBER_MONITOR_THREAD_POOLS = 1;
-
+	// restart timmers
+	public final static int PRODUCER_TIMMER = 10;
+	public final static int CONSUMER_TIMMER = 30;
 	public static final String[][] TYPE_PRODUCERS = { { "CPU" }, { "RAM" }, { "DISK_SPACE" } };
 
 	public static final int NUMBER_PRODUCERS = 3;
@@ -61,7 +65,11 @@ public class Main {
 	// checking for any down thread
 	// ARRAY TO store all my executors and will be checked by a deamon thread //
 	public static CopyOnWriteArrayList<ExecutorService> executorsArrayList = new CopyOnWriteArrayList<>();
-	public static CopyOnWriteArrayList<Thread> threadArrayList = new CopyOnWriteArrayList<>();
+	public static CopyOnWriteArrayList<Thread> consumerThreadArrayList = new CopyOnWriteArrayList<>();
+	public static CopyOnWriteArrayList<Thread> producerThreadArrayList = new CopyOnWriteArrayList<>();
+	// executors
+
+	public static ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 	public static ExecutorService monitorExecutor;
 	// Cached thread pools, 1 for each, producers and consumers
 	public static ExecutorService producerExecutor;
@@ -73,11 +81,8 @@ public class Main {
 
 		GUI.addAlert("Starting Program by default" + isRunning);
 		if (isRunning) {
-			if (executorsArrayList.isEmpty()) {
-				startThreadPools(isRunning);
-			}
-
-		}else {
+			startThreadPools(isRunning);
+		} else {
 			stopProgram(isRunning);
 		}
 
@@ -87,9 +92,10 @@ public class Main {
 	 * USE Case 2 - Monitoring threads that are stopped Replacing the stopped
 	 * Threads by new ones
 	 */
-	public synchronized static void monitoringDeamonThread(boolean isRunning) {
+	public synchronized static void monitoringDeamonThread(boolean isRunning, ExecutorService executor,
+			CopyOnWriteArrayList<Thread> threadArrayList) {
 
-		monitorinDeamonThread = new MonitoringThread(producerExecutor, consumerExecutor, isRunning, threadArrayList);
+		monitorinDeamonThread = new MonitoringThread(executor, isRunning, threadArrayList, GUI);
 		monitorinDeamonThread.setDaemon(true);
 		try {
 			monitorExecutor.execute(monitorinDeamonThread);
@@ -105,7 +111,29 @@ public class Main {
 		threadArrayList.add(monitorinDeamonThread);
 
 	}
+//periodic task to run depending on type of monitor thread to be started
+	public static void schedulePeriodicTask(int intervalSeconds, String type, boolean isRunning) {
 
+		// Runnable task to be executed periodically
+		Runnable periodicTask = () -> {
+			// Put your logic here
+			System.out.println("Executing periodic task...");
+			if (type.equals("C")) {
+				// checkAndRestartThreads_v2(producerExecutor);
+				monitoringDeamonThread(isRunning, consumerExecutor, consumerThreadArrayList);
+			}
+			if (type.equals("P")) {
+				// checkAndRestartThreads_v2(producerExecutor);
+				monitoringDeamonThread(isRunning, producerExecutor, producerThreadArrayList);
+			}
+
+			// Example: Display current time
+			System.out.println("Current time: " + System.currentTimeMillis());
+		};
+
+		// Schedule the task to run periodically
+		scheduler.scheduleAtFixedRate(periodicTask, 0, intervalSeconds, TimeUnit.SECONDS);
+	}
 	/*
 	 * USE CASE 3 - Safety when closing the program Stop program, stoppiung all
 	 * executors and services removing all the executors from the array This is the
@@ -115,6 +143,8 @@ public class Main {
 	public static void stopProgram(boolean isRunning) {
 		// terminate Daemon Thread
 		isRunning = false;
+		CopyOnWriteArrayList<Thread> threadArrayList = consumerThreadArrayList;
+		threadArrayList.addAll(producerThreadArrayList);
 		// close all threads
 		for (int i = 0; i < threadArrayList.size(); i++) {
 
@@ -182,7 +212,7 @@ public class Main {
 						consumerExecutor.execute(c);
 					}
 					consumerExecutor.awaitTermination(1, TimeUnit.SECONDS);
-					threadArrayList.add(c);
+					consumerThreadArrayList.add(c);
 				} catch (InterruptedException e) {
 					consumerExecutor.shutdownNow();
 					e.printStackTrace();
@@ -218,8 +248,8 @@ public class Main {
 					// execute task
 					if (!producerExecutor.isShutdown()) {
 						producerExecutor.execute(p);
-						threadArrayList.add(p);
-						
+						producerThreadArrayList.add(p);
+
 					}
 					producerExecutor.awaitTermination(1, TimeUnit.SECONDS);
 				} catch (InterruptedException e) {
@@ -228,12 +258,14 @@ public class Main {
 				}
 
 			}
+			// if (executorsArrayList.isEmpty()) {
 			// use case 2 - re instance threads stopped...
-			//not working...
-			if (monitorinDeamonThread == null)
-				monitoringDeamonThread(isRunning);
+			if (monitorinDeamonThread == null) {
+				// monitoringDeamonThread(isRunning);
+				schedulePeriodicTask(CONSUMER_TIMMER, "C", isRunning);
+				schedulePeriodicTask(PRODUCER_TIMMER, "P", isRunning);
+			}
 		}
-	
 
 	}
 }

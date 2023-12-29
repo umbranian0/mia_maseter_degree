@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit;
 
 public class Consumer implements Runnable {
 	public static final int TIMEOUT_SEC = 5;
-	public static final int RUNNING_TIME_MS = 12000000;
+	public static final int RUNNING_TIME_MS = 1000;
 	// alarms
 	public static final double CPU_ALARM_PERCENTAGE = 0.80;
 	public static final double RAM_ALARM_PERCENTAGE = 0.10;
@@ -107,10 +107,10 @@ public class Consumer implements Runnable {
 					alertFlow(obj, id);
 					
 				}
-				// Thread.sleep(RUNNING_TIME_MS);
+				 //Thread.sleep(RUNNING_TIME_MS);
 			}
 		} catch (InterruptedException e) {
-			System.out.println("Consumer exception: " + e.toString());
+			//System.out.println("Consumer exception: " + e.toString());
 			interruptThread();
 		}
 	}
