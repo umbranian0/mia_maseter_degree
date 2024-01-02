@@ -13,12 +13,12 @@ public class ResourceMonitorUtils
     public static double getCpuLoad()
     {
         // This method returns the real CPU load.
-        double cpuLoad = operatingSystemMXBean.getCpuLoad();
+        //double cpuLoad = operatingSystemMXBean.getCpuLoad();
 
         // If the CPU load is invalid, an exception is thrown.
-        if (cpuLoad < 0.0)
+        if (randomGenerator.nextDouble() < 0.05)
             throw new RuntimeException("Invalid CPU load.");
-        return cpuLoad;
+        return randomGenerator.nextDouble();
     }
 
     private static double simulatePercentage(String errorMessage)

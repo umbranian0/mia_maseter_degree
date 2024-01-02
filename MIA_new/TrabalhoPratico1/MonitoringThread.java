@@ -1,88 +1,74 @@
 package TrabalhoPratico1;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+public class MonitoringThread extends Thread {
 
-class MonitoringThread extends Thread implements Runnable {
-	private final ExecutorService executor;
-	private final Map<Runnable, Long> lastExecutionTimes = new ConcurrentHashMap<>();
+	private final ExecutorService producerExecutor;
+	private final ExecutorService consumerExecutor;
+	private final ConcurrentHashMap<Runnable, Long> lastExecutionTimes;
 
-	private boolean isActive;
-	private CopyOnWriteArrayList<Thread> threadArrayList;
-	private ResourceMonitorGUI gui;
+	private final AtomicBoolean isActive;
+	final ResourceMonitorGUI gui;
+	private static final int PRODUCER_THRESHOLD_SECONDS = 1;
+	private static final int CONSUMER_THRESHOLD_SECONDS = 3;
 
-	// constructors
-	public MonitoringThread(ExecutorService executor) {
-		this.executor = executor;
-		this.isActive = true;
-	}
-
-	public MonitoringThread(ExecutorService executor, boolean isActive,
-			CopyOnWriteArrayList<Thread> threadArrayList, ResourceMonitorGUI gui) {
-		this.executor = executor;
-		this.isActive = true;
-		this.threadArrayList = threadArrayList;
+	public MonitoringThread(ExecutorService producerExecutor, ExecutorService consumerExecutor, ResourceMonitorGUI gui,
+			ConcurrentHashMap<Runnable, Long> lastExecutionTimes) {
+		this.producerExecutor = producerExecutor;
+		this.consumerExecutor = consumerExecutor;
+		this.lastExecutionTimes = lastExecutionTimes;
 		this.gui = gui;
+		isActive = new AtomicBoolean(true);
+		setDaemon(true);
+		start();
 	}
 
-	// accessors
-	public boolean isActive() {
-		return isActive;
+	public void shutdown() {
+		isActive.set(false);
 	}
 
-	public void setActive(boolean isActive) {
-		this.isActive = isActive;
-	}
-
-
-	public Map<Runnable, Long> getLastExecutionTimes() {
-		return lastExecutionTimes;
-	}
-
-
-
-	// methods
 	@Override
 	public void run() {
-		while (isActive()) {
-
-			// Verifica se algum produtor ou consumidor está inativo e reinicia
-			if (!Thread.currentThread().isAlive()) {
-				setActive(false);
+		while (isActive.get() && !producerExecutor.isShutdown() || !consumerExecutor.isShutdown()) {
+			checkAndRestartProducers();
+			checkAndRestartConsumers();
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				e.printStackTrace();
 			}
-
-			// Sleep for a short duration to avoid tight-looping
-			if (!executor.isShutdown()) {
-				checkAndRestartThreads_v2(executor);
-				
-			}
-			
 		}
 	}
 
-
-	private synchronized void checkAndRestartThreads_v2(ExecutorService executorService) {
-		if (threadArrayList == null) {
-			return;
-		}
-
-		for (int i = 0; i < threadArrayList.size(); i++) {
-			Thread thread = (Thread) threadArrayList.get(i);
-
-			// Task has been inactive for the specified threshold, restart it
-			if (!thread.isAlive()) {
-				threadArrayList.get(i).interrupt();
-				executorService.execute(thread);
-				//System.out.println("Thread: " + thread.getClass() + " Restarting task: " + thread.toString());
-				gui.addAlert(" Restarting task: " + thread.toString());
-				
-			}
-
-		}
-
+	private void checkAndRestartProducers() {
+		checkAndRestartThreads(producerExecutor, PRODUCER_THRESHOLD_SECONDS);
 	}
 
+	private void checkAndRestartConsumers() {
+		checkAndRestartThreads(consumerExecutor, CONSUMER_THRESHOLD_SECONDS);
+	}
+
+	private void checkAndRestartThreads(ExecutorService executorService, int secondsThreshold) {
+		gui.addAlert("Running monitoring thread run ");
+		
+		long currentTime = System.currentTimeMillis();
+		
+		for (Runnable task : ((ThreadPoolExecutor) executorService).getQueue()) {
+			long lastExecutionTime = lastExecutionTimes.getOrDefault(task, 0L);
+
+			if (lastExecutionTime != 0 && currentTime - lastExecutionTime > secondsThreshold * 1000) {
+				// The task has been inactive for more than the threshold (in milliseconds)
+				// Restart the task (replace it with a new one)
+				executorService.execute(task);
+				lastExecutionTimes.put(task, currentTime); // Update last execution time
+				gui.addAlert("Executing new task - " + task.toString());
+				System.out.println("Executing new task - " + task.toString());
+			}
+		}
+	}
 }

@@ -1,13 +1,14 @@
 package TrabalhoPratico1;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class Consumer implements Runnable {
 	public static final int TIMEOUT_SEC = 5;
-	public static final int RUNNING_TIME_MS = 1000;
+	public static final int RUNNING_TIME_MS = 100000;
 	// alarms
-	public static final double CPU_ALARM_PERCENTAGE = 0.80;
+	public static final double CPU_ALARM_PERCENTAGE = 0.8;
 	public static final double RAM_ALARM_PERCENTAGE = 0.10;
 	public static final double DISK_SPACE_ALARM_PERCENTAGE = 0.20;
 
@@ -16,6 +17,7 @@ public class Consumer implements Runnable {
 	private int id;
 	private boolean started;
 	private ResourceMonitorGUI gui;
+	private ConcurrentHashMap<Runnable, Long> lastExecutionTimes;
 
 	// constructors
 	public Consumer(int id, BlockingQueue<OutputSpec_v2> queue, boolean start) {
@@ -24,11 +26,14 @@ public class Consumer implements Runnable {
 		this.started = start;
 	}
 
-	public Consumer(int id, BlockingQueue<OutputSpec_v2> queue, boolean start, ResourceMonitorGUI gui) {
+	public Consumer(int id, BlockingQueue<OutputSpec_v2> queue, boolean start, ResourceMonitorGUI gui,
+			ConcurrentHashMap<Runnable, Long> lastExecutionTimes) {
 		this.queue = queue;
 		this.id = id;
 		this.started = start;
 		this.gui = gui;
+		this.lastExecutionTimes = lastExecutionTimes;
+
 	}
 
 	public BlockingQueue<OutputSpec_v2> getQueue() {
@@ -49,23 +54,25 @@ public class Consumer implements Runnable {
 	}
 
 	// methods to initialize alarm
-	private synchronized boolean isCpuAlarm(double value) {
+	private boolean isCpuAlarm(double value) {
 		return value > CPU_ALARM_PERCENTAGE;
 	}
 
-	private synchronized boolean isRamAlarm(double value) {
+	private boolean isRamAlarm(double value) {
 		return value < RAM_ALARM_PERCENTAGE;
 	}
 
-	private synchronized boolean isDiskSpaceAlarm(double value) {
+	private boolean isDiskSpaceAlarm(double value) {
 		return value < DISK_SPACE_ALARM_PERCENTAGE;
 	}
 
-	private synchronized void alertFlow(OutputSpec_v2 obj, int consumerId) {
-		String alert = "Consumer id :" + consumerId + " !!ALERT!! " + obj.getType() + " , is too HIGH! ALERT .."
-				+ obj.getValue();
+	private void alertFlow(OutputSpec_v2 obj, int consumerId) {
+		String alert = "Consumer id :" + consumerId + " ,producer id :" + obj.getproducer_id() + " !!ALERT!! "
+				+ obj.getType() + " ! ALERT .." + obj.getValue();
+
 		boolean ringAlarm = false;
-		switch (obj.type) {
+
+		switch (obj.getType()) {
 		case "CPU": {
 			if (isCpuAlarm(obj.getValue()))
 				ringAlarm = true;
@@ -82,12 +89,12 @@ public class Consumer implements Runnable {
 			break;
 		}
 		default:
-			throw new IllegalArgumentException("Unexpected value: " + obj.type);
+			throw new IllegalArgumentException("Unexpected value: " + obj.getType());
 		}
+
 		// ring the alarm in gUI
 		if (ringAlarm) {
 			gui.addAlert(alert.toString());
-			//System.out.println("consumer ALERT Check " + alert.toString());
 		}
 	}
 
@@ -96,28 +103,31 @@ public class Consumer implements Runnable {
 	}
 
 	@Override
-	public synchronized void run() {
+	public void run() {
 		try {
 			while (isStarted()) {
 
-				// Thread.sleep(RUNNING_TIME_MS);
+				long sysTime = System.currentTimeMillis();
+				lastExecutionTimes.put(this, sysTime);
 				OutputSpec_v2 obj = queue.poll(TIMEOUT_SEC, TimeUnit.SECONDS);
+
 				if (obj != null) {
-					//System.out.println("Consumer  id : " + id + " , consumed object: " + obj.toString());
-					alertFlow(obj, id);
-					
+					obj.setConsumer_id(getId());
+					alertFlow(obj, getId());
 				}
-				 //Thread.sleep(RUNNING_TIME_MS);
+				//Thread.sleep(RUNNING_TIME_MS);
+
 			}
 		} catch (InterruptedException e) {
-			//System.out.println("Consumer exception: " + e.toString());
-			interruptThread();
+
+			System.out.println("Consumer exception: " + e.toString());
+
 		}
 	}
 
 	@Override
 	public String toString() {
-		return "Consumer [queue=" + queue + ", id=" + id + "]";
+		return "Consumer [queue=" + getQueue() + ", id=" + getId() + "]";
 	}
 
 }

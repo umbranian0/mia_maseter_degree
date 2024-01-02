@@ -1,15 +1,13 @@
 package TrabalhoPratico1;
 
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import javax.swing.Spring;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class Producer implements Runnable {
 	// each 100 miliseconds
 	public static final int RUNNING_TIME_MS = 100;
-
+	// public static final int RUNNING_TIME_MS = 10000;
 	private static final String[][] TYPE_PRODUCERS = { { "CPU" }, { "RAM" }, { "DISK_SPACE" } };
 
 	private BlockingQueue<OutputSpec_v2> queue;
@@ -18,18 +16,23 @@ public class Producer implements Runnable {
 	private boolean started;
 	private ResourceMonitorGUI gui;
 
+	private ConcurrentHashMap<Runnable, Long> lastExecutionTimes;
+
 	public Producer(int id, BlockingQueue<OutputSpec_v2> queue, boolean start) {
 		this.queue = queue;
 		this.id = id;
 		this.started = start;
 	}
 
-	public Producer(int id, BlockingQueue<OutputSpec_v2> queue, boolean start, ResourceMonitorGUI gui, String type) {
+	public Producer(int id, BlockingQueue<OutputSpec_v2> queue, boolean start, ResourceMonitorGUI gui, String type,
+			ConcurrentHashMap<Runnable, Long> lastExecutionTimes) {
 		this.queue = queue;
 		this.id = id;
 		this.started = start;
 		this.gui = gui;
 		this.type = type;
+
+		this.lastExecutionTimes = lastExecutionTimes;
 	}
 
 	public ResourceMonitorGUI getGui() {
@@ -64,11 +67,7 @@ public class Producer implements Runnable {
 		this.type = type;
 	}
 
-	public void interruptThread() {
-		Thread.currentThread().interrupt();
-	}
-
-	private synchronized double getRam() {
+	private double getRam() {
 		double ram = 0;
 
 		try {
@@ -76,16 +75,16 @@ public class Producer implements Runnable {
 		} catch (Exception e) {
 
 			gui.addAlert("Stopping Producer error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
-//			if (e.getMessage() == "Invalid free RAM percentage.") {
-//				gui.addAlert("Producer : "+e.getMessage() +"  .Trying again..");
-//				ram = getRam();
-//			}
+			if (e.getMessage() == "Invalid free RAM percentage.") {
+				gui.addAlert("Producer : "+e.getMessage() +"  .Trying again..");
+				ram = getRam();
+			}
 		}
 
 		return ram;
 	}
 
-	private synchronized double getCpu() {
+	private double getCpu() {
 		double cpu = 0;
 
 		try {
@@ -94,31 +93,33 @@ public class Producer implements Runnable {
 		} catch (Exception e) {
 
 			gui.addAlert("Stopping Producer error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
-//			if (e.getMessage() == "Invalid free RAM percentage.") {
-//				gui.addAlert("Producer : "+e.getMessage() +"  .Trying again..");
-//				cpu = getCpu();
-//			}
+			if (e.getMessage() == "Invalid free RAM percentage.") {
+				gui.addAlert("Producer : "+e.getMessage() +"  .Trying again..");
+				cpu = getCpu();
+			}
 		}
 
-		return cpu;
+		return  cpu;
 	}
 
-	private synchronized double getFreeDisk() {
+	private double getFreeDisk() {
 		double freeDiskSpace = 0;
+
 		try {
 			freeDiskSpace = ResourceMonitorUtils.getFreeDiskSpace();
 		} catch (Exception e) {
+
 			gui.addAlert("Stopping Producer error : " + e.getMessage() + " , cause: e.getCause()" + e.getCause());
-//			if (e.getMessage() == "Invalid free RAM percentage.") {
-//				gui.addAlert("Producer : " + e.getMessage() + "  .Trying again..");
-//				freeDiskSpace = getFreeDisk();
-//			}
+			if (e.getMessage() == "Invalid free RAM percentage.") {
+				gui.addAlert("Producer : " + e.getMessage() + "  .Trying again..");
+				freeDiskSpace = getFreeDisk();
+			}
 		}
 
 		return freeDiskSpace;
 	}
 
-	private synchronized double getValue(String type) {
+	private double getValue(String type) {
 
 		switch (type) {
 		case "CPU": {
@@ -142,26 +143,24 @@ public class Producer implements Runnable {
 	@Override
 	public void run() {
 		try {
-			if (!isStartProducer()) {
-				gui.addAlert("Closing program");
-				setStart(false);
-				interruptThread();
-			}
+
 			while (isStartProducer()) {
-				OutputSpec_v2 out = new OutputSpec_v2(getValue(getType()), getType());
-				queue.put(out);
+				long sysTime = System.currentTimeMillis();
+				lastExecutionTimes.put(this, sysTime);
+				OutputSpec_v2 out = new OutputSpec_v2(getValue(getType()), getType(), getId(), -1, sysTime);
+				//System.out.println("Producer  id : " + id + " , produced object: " + out.toString());
+				queue.offer(out, 1, TimeUnit.SECONDS);
 				// each 100 miliseconds
 				Thread.sleep(RUNNING_TIME_MS);
 			}
 		} catch (InterruptedException e) {
-			//System.out.println("Producer exception: " + e.toString());
-			interruptThread();
+			
+			System.out.println("Producer exception: " + e.toString());
 		}
 	}
 
 	@Override
 	public String toString() {
-
 		return "Producer [queue=" + getQueue() + ", id=" + id + "] \n";
 
 	}
