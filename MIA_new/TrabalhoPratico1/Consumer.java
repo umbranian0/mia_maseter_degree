@@ -17,7 +17,7 @@ public class Consumer implements Runnable {
 	private int id;
 	private boolean started;
 	private ResourceMonitorGUI gui;
-	private ConcurrentHashMap<Runnable, Long> lastExecutionTimes;
+	private long lastExecutionTimes;
 
 	// constructors
 	public Consumer(int id, BlockingQueue<OutputSpec_v2> queue, boolean start) {
@@ -26,44 +26,12 @@ public class Consumer implements Runnable {
 		this.started = start;
 	}
 
-	public Consumer(int id, BlockingQueue<OutputSpec_v2> queue, boolean start, ResourceMonitorGUI gui,
-			ConcurrentHashMap<Runnable, Long> lastExecutionTimes) {
+	public Consumer(int id, BlockingQueue<OutputSpec_v2> queue, boolean start, ResourceMonitorGUI gui) {
 		this.queue = queue;
 		this.id = id;
 		this.started = start;
 		this.gui = gui;
-		this.lastExecutionTimes = lastExecutionTimes;
 
-	}
-
-	public BlockingQueue<OutputSpec_v2> getQueue() {
-		return queue;
-	}
-
-	public int getId() {
-		return id;
-	}
-
-	public boolean isStarted() {
-		return started;
-	}
-
-	public void setStarted(boolean started) {
-		this.started = started;
-
-	}
-
-	// methods to initialize alarm
-	private boolean isCpuAlarm(double value) {
-		return value > CPU_ALARM_PERCENTAGE;
-	}
-
-	private boolean isRamAlarm(double value) {
-		return value < RAM_ALARM_PERCENTAGE;
-	}
-
-	private boolean isDiskSpaceAlarm(double value) {
-		return value < DISK_SPACE_ALARM_PERCENTAGE;
 	}
 
 	private void alertFlow(OutputSpec_v2 obj, int consumerId) {
@@ -98,36 +66,77 @@ public class Consumer implements Runnable {
 		}
 	}
 
-	public void interruptThread() {
-		Thread.currentThread().interrupt();
-	}
-
 	@Override
 	public void run() {
-		try {
-			while (isStarted()) {
+		while (isStarted()) {
+			if (!getQueue().isEmpty()) {
+				try {
 
-				long sysTime = System.currentTimeMillis();
-				lastExecutionTimes.put(this, sysTime);
-				OutputSpec_v2 obj = queue.poll(TIMEOUT_SEC, TimeUnit.SECONDS);
+					long sysTime = System.currentTimeMillis();
 
-				if (obj != null) {
-					obj.setConsumer_id(getId());
-					alertFlow(obj, getId());
+					OutputSpec_v2 obj = queue.poll(TIMEOUT_SEC, TimeUnit.SECONDS);
+					if (obj != null) {
+						obj.setConsumerExecutionTime(sysTime);
+						obj.setConsumer_id(getId());
+						setLastExecutionTimes(sysTime);
+						// check for alerts
+						alertFlow(obj, getId());
+						//Thread.sleep(RUNNING_TIME_MS);
+					}
+
+				} catch (InterruptedException e) {
+					System.out.println("Consumer exception: " + e.toString());
+
 				}
-				//Thread.sleep(RUNNING_TIME_MS);
-
+			} else {
+				break;
 			}
-		} catch (InterruptedException e) {
-
-			System.out.println("Consumer exception: " + e.toString());
-
 		}
+	}
+	// asessors
+
+	public long getLastExecutionTimes() {
+		return lastExecutionTimes;
+	}
+
+	public void setLastExecutionTimes(long lastExecutionTimes) {
+		this.lastExecutionTimes = lastExecutionTimes;
+	}
+
+	public BlockingQueue<OutputSpec_v2> getQueue() {
+		return queue;
+	}
+
+	public int getId() {
+		return id;
+	}
+
+	public boolean isStarted() {
+		return started;
+	}
+
+	public void setStarted(boolean started) {
+		this.started = started;
+
+	}
+
+	// methods to initialize alarm
+	private boolean isCpuAlarm(double value) {
+		return value > CPU_ALARM_PERCENTAGE;
+	}
+
+	private boolean isRamAlarm(double value) {
+		return value < RAM_ALARM_PERCENTAGE;
+	}
+
+	private boolean isDiskSpaceAlarm(double value) {
+		return value < DISK_SPACE_ALARM_PERCENTAGE;
 	}
 
 	@Override
 	public String toString() {
-		return "Consumer [queue=" + getQueue() + ", id=" + getId() + "]";
+		return "Consumer [queue=" + queue + ", id=" + id + ", started=" + started + ", gui=" + gui
+				+ ", lastExecutionTimes=" + lastExecutionTimes + "]";
 	}
 
 }

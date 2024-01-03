@@ -9,13 +9,15 @@ public class OutputSpec_v2 {
 	private String type;
 	private int producer_id;
 	private int consumer_id;
-	private long executionTime;
+	private long consumerExecutionTime;
+	private long producerExecutionTime;
 
-	public OutputSpec_v2(double value, String type, int producer_id , int consumer_id,long executionTime) {
+	public OutputSpec_v2(double value, String type, int producer_id , int consumer_id,long consumerExecutionTime,long producerExecutionTime) {
 		this.value = value;
 		this.type = type;
 		this.producer_id = producer_id;
-		this.executionTime=executionTime;
+		this.consumerExecutionTime=consumerExecutionTime;
+		this.consumerExecutionTime=producerExecutionTime;
 		this.consumer_id = consumer_id;
 	}
 
@@ -24,13 +26,34 @@ public class OutputSpec_v2 {
 		return value;
 	}
 	
+	
+
+	public long getConsumerExecutionTime() {
+		return consumerExecutionTime;
+	}
+
+
+	public void setConsumerExecutionTime(long consumerExecutionTime) {
+		this.consumerExecutionTime = consumerExecutionTime;
+	}
+
+
+	public long getProducerExecutionTime() {
+		return producerExecutionTime;
+	}
+
+
+	public void setProducerExecutionTime(long producerExecutionTime) {
+		this.producerExecutionTime = producerExecutionTime;
+	}
+
 
 	public long getExecutionTime() {
-		return executionTime;
+		return consumerExecutionTime;
 	}
 
 	public void setExecutionTime(long executionTime) {
-		this.executionTime = executionTime;
+		this.consumerExecutionTime = executionTime;
 	}
 
 	public int getConsumer_id() {
@@ -74,7 +97,7 @@ public class OutputSpec_v2 {
 	@Override
 	public String toString() {
 		return "OutputSpec_v2 [value=" + value + ", type=" + type + ", producer_id=" + producer_id + ", consumer_id="
-				+ consumer_id + ", executionTime=" + executionTime + "]";
+				+ consumer_id + ", executionTime=" + consumerExecutionTime + "]";
 	}
 
 	

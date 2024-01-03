@@ -1,5 +1,6 @@
 package TrabalhoPratico1;
 
+import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,8 +48,7 @@ public class main {
 
 	public static final int NUMBER_PRODUCERS = 3;
 	public static int numConsumers = -1;
-	// last consumer times concurrent hash map
-	public static ConcurrentHashMap<Runnable, Long> lastExecutionTimes = new ConcurrentHashMap<Runnable, Long>();
+
 	// Queue for the producers and consuemrs
 	public static BlockingQueue<OutputSpec_v2> queue = new ArrayBlockingQueue<OutputSpec_v2>(100);
 
@@ -57,7 +57,7 @@ public class main {
 	// checking for any down thread
 	// ARRAY TO store all my executors and will be checked by a deamon thread //
 	public static CopyOnWriteArrayList<ExecutorService> executorsArrayList = new CopyOnWriteArrayList<>();
-
+	public static CopyOnWriteArrayList<Runnable> listProducerAndConsumer = new CopyOnWriteArrayList<Runnable>();
 	// executors
 	public static ExecutorService monitorExecutor;
 	// Cached thread pools, 1 for each, producers and consumers
@@ -75,7 +75,6 @@ public class main {
 			Thread.sleep(1000); // Adjust the sleep time as needed
 		}
 		while (isRunning) {
-
 			GUI.addAlert("Starting Program " + isRunning);
 			if (isRunning) {
 				startThreadPools(isRunning, numConsumers);
@@ -95,9 +94,13 @@ public class main {
 	public synchronized static void monitoringDeamonThread(boolean isRunning, ExecutorService consumerExecutor,
 			ExecutorService producerExecutor) {
 		if (monitorinDeamonThread == null) {
-			monitorinDeamonThread = new MonitoringThread(producerExecutor, consumerExecutor, GUI, lastExecutionTimes);
+			monitorinDeamonThread = new MonitoringThread(producerExecutor, consumerExecutor, GUI,
+					listProducerAndConsumer, monitorExecutor);
+			// start daemon thread
+			// monitorinDeamonThread.start();
 			monitorExecutor.execute(monitorinDeamonThread);
 		}
+
 	}
 
 	/*
@@ -125,11 +128,11 @@ public class main {
 
 			// instance Consumers in Consumer Thread Pool
 			for (int i = 1; i <= numConsumers; i++) {
-				Consumer c = new Consumer(i, queue, isRunning, GUI, lastExecutionTimes);
+				Consumer c = new Consumer(i, queue, isRunning, GUI);
 				try {
 					// execute task
 					if (!consumerExecutor.isShutdown()) {
-						lastExecutionTimes.put(c, System.currentTimeMillis());
+						listProducerAndConsumer.add(c);
 						consumerExecutor.execute(c);
 						consumerExecutor.awaitTermination(1, TimeUnit.SECONDS);
 					}
@@ -138,9 +141,7 @@ public class main {
 					e.printStackTrace();
 				}
 			}
-			// use case 2 - restart threads that are down
-			if (consumerExecutor != null && producerExecutor != null)
-				monitoringDeamonThread(isRunning, consumerExecutor, producerExecutor);
+
 			// instance 3 producers
 			// dynamic based on global variable
 			for (int j = 1; j <= NUMBER_PRODUCERS; j++) {
@@ -150,35 +151,37 @@ public class main {
 				Producer p;
 				switch (j) {
 				case 1: {
-					p = new Producer(j, queue, isRunning, GUI, "CPU", lastExecutionTimes);
+					p = new Producer(j, queue, isRunning, GUI, "CPU");
 					break;
 				}
 				case 2: {
-					p = new Producer(j, queue, isRunning, GUI, "RAM", lastExecutionTimes);
+					p = new Producer(j, queue, isRunning, GUI, "RAM");
 					break;
 				}
 				case 3: {
-					p = new Producer(j, queue, isRunning, GUI, "DISK_SPACE", lastExecutionTimes);
+					p = new Producer(j, queue, isRunning, GUI, "DISK_SPACE");
 					break;
 				}
 				default:
 					throw new IllegalArgumentException("Unexpected value: " + j);
 				}
-
 				// execute task
 				if (!producerExecutor.isShutdown()) {
-					lastExecutionTimes.put(p, System.currentTimeMillis());
+					listProducerAndConsumer.add(p);
 					producerExecutor.execute(p);
 				}
 
 			}
+			// use case 2 - restart threads that are down
+			if (consumerExecutor != null && producerExecutor != null)
+				monitoringDeamonThread(isRunning, consumerExecutor, producerExecutor);
 
 		}
 
 	}
 
 	/*
-	 * USE CASE 3 - Safety when closing the program Stop program, stoppiung all
+	 * USE CASE 3 - Safety when closing the program Stop program, stopping all
 	 * executors and services removing all the executors from the array This is the
 	 * safety method that closes the program
 	 */

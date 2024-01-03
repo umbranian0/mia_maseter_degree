@@ -94,7 +94,7 @@ public class Main {
 				Thread.sleep(2);
 				System.out.println("Optimistic Lock Valid: " + lock.validate(stamp));
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
+				
 				e.printStackTrace();
 			} finally {
 				lock.unlock(stamp);
@@ -107,7 +107,7 @@ public class Main {
 				System.out.println("Write Lock acquired");
 				Thread.sleep(2);
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
+				
 				e.printStackTrace();
 			} finally {
 				lock.unlock(stamp);
@@ -129,7 +129,7 @@ public class Main {
 				Thread.sleep(1);
 				map.put("foo", "bar");
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
+				
 				e.printStackTrace();
 			} finally {
 				lock.writeLock().unlock();
@@ -142,7 +142,7 @@ public class Main {
 				System.out.println(map.get("foo"));
 				Thread.sleep(1);
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
+				
 				e.printStackTrace();
 			} finally {
 				lock.readLock().unlock();
@@ -165,7 +165,7 @@ public class Main {
 				Thread.sleep(1);
 				map.put("foo", "bar");
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
+				
 				e.printStackTrace();
 			} finally {
 				lock.unlockWrite(stamp);
@@ -178,7 +178,7 @@ public class Main {
 				Thread.sleep(1);
 				System.out.println(map.get("foo"));
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
+				
 				e.printStackTrace();
 			} finally {
 				lock.unlockRead(stamp);
