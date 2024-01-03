@@ -69,7 +69,7 @@ public class Consumer implements Runnable {
 	@Override
 	public void run() {
 		while (isStarted()) {
-			if (!getQueue().isEmpty()) {
+			if (main.isRunning) {
 				try {
 
 					long sysTime = System.currentTimeMillis();
